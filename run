@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+
+use core\Db;
+set_time_limit(0);
+ini_set('memory_limit', '12M');
+ini_set("display_errors", "off");
+error_reporting(E_ALL);
+define('APP_PATH', dirname(__FILE__).'/');
+include_once 'core/init.php';
+
+$spider = new \core\Spider();
+$spider->start();
+
+?>
+
