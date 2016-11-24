@@ -49,11 +49,18 @@ class CurlRequest
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER,FALSE);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,FALSE);
-        $this->content = $content = curl_exec($ch);
-        $this->curlInfo = $curlInfo = curl_getinfo($ch);
+        $this->content = curl_exec($ch);
+        $this->curlInfo = curl_getinfo($ch);
+        // 全部转utf-8
+        $encode = mb_detect_encoding($this->content, array('ASCII', 'GB2312', 'GBK', 'UTF-8', 'CP936'));
+        $encode = !$encode ? 'GBK' : $encode;
+        if ($encode != 'UTF-8') {
+            $this->content = mb_convert_encoding($this->content, 'utf-8', $encode);
+            $this->content = preg_replace("/<meta([^>]*)charset=([^>]*)>/is", '<meta charset="UTF-8">', $this->content);
+        }
         curl_close($ch);
         $this->url = $url;
-        $this->setResponseCookie($content);
+        $this->setResponseCookie($this->content);
     }
 
     public function setResponseCookie($data)
@@ -94,8 +101,9 @@ class CurlRequest
     public function setUserAgent($userAgent = false)
     {
 
-        $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0';
+
         $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36';
+        $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0';
 
         if ($userAgent) {
             $this->userAgent = $userAgent;

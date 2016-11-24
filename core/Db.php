@@ -76,8 +76,10 @@ class Db
             $values[] = "'$value'";
         }
         $sql = "INSERT INTO ".self::$table.' ('.(implode(',', $fields)).') values('.(implode(',', $values)).')';
-//        echo $sql;
-        return self::$db->exec($sql);
+        $stmt =  self::$db->prepare($sql);
+        $stmt->execute();
+        $this->error($stmt, $sql);
+        return self::$db->lastInsertId();
     }
 
     /**
@@ -95,7 +97,10 @@ class Db
         }
         $edit_fields = implode(',', $fields);
         $sql = "UPDATE ".self::$table." SET $edit_fields $edit_where";
-        return self::$db->exec($sql);
+        $stmt =  self::$db->prepare($sql);
+        $stmt->execute();
+        $this->error($stmt, $sql);
+        return $stmt->rowCount();
     }
 
 
