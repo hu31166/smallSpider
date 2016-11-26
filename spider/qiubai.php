@@ -2,8 +2,10 @@
 $GLOBALS['config'] = [
     'domain' => 'www.qiushibaike.com',
     'url' => 'http://www.qiushibaike.com',
-    'fork' => 8,
+    'fork' => 1,
     'redis' => true,
+    'clear' => true,
+    'usleep' => 0,
     'match_html' => [
         [
             'table' => 'qiubai',

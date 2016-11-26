@@ -35,7 +35,6 @@ class CurlRequest
             $url  = $url.'?'.(is_array($query) ? http_build_query($query) : $query);
         }
         curl_setopt($ch,CURLOPT_URL, $url);
-
         if ($type == 'POST') {
             curl_setopt($ch, CURLOPT_POST, TRUE);
             curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($query) ? http_build_query($query) : $query);
@@ -59,6 +58,7 @@ class CurlRequest
             $this->content = preg_replace("/<meta([^>]*)charset=([^>]*)>/is", '<meta charset="UTF-8">', $this->content);
         }
         curl_close($ch);
+//        Log::infoLog($this->content);
         $this->url = $url;
         $this->setResponseCookie($this->content);
     }

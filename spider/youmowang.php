@@ -2,8 +2,10 @@
 $GLOBALS['config'] = [
     'domain' => 'www.haha365.com',
     'url' => 'http://www.haha365.com/xd_joke/676404.htm',
-    'fork' => 0,
+    'fork' => 5,
     'redis' => true,
+    'clear' => true,
+    'usleep' => 0,
     'match_html' => [
         [
             'table' => 'youmowang',

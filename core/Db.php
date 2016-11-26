@@ -72,6 +72,7 @@ class Db
      */
     public function insert($data){
         foreach ($data as $key => $value) {
+            $value = htmlspecialchars($value);
             $fields[] = "`$key`";
             $values[] = "'$value'";
         }

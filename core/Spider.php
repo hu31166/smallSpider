@@ -23,10 +23,10 @@ class Spider
     public $content = '';
 
     // 失败次数
-    public $failNum = [];
+    public $failNum = 0;
 
     // 成功次数
-    public $successNum = [];
+    public $successNum = 0;
 
     // 发现页面总数
     public $total = 0;
@@ -56,24 +56,27 @@ class Spider
 
     public $redisPrefix = '';
 
+    public $clear = false;
+
+    public $usleep = 0;
+
+    public $domain = '';
+
+    public $url = '';
+
     public function start()
     {
         $this->command();
-
-        $this->redisPrefix = $GLOBALS['config']['domain'];
+        $this->redisPrefix = $GLOBALS['config']['domain'].'-';
         $this->beginTime = time();
         $this->redis = $GLOBALS['config']['redis'];
         $this->fork = $GLOBALS['config']['fork'];
+        $this->clear = $GLOBALS['config']['clear'];
+        $this->usleep = $GLOBALS['config']['usleep'];
+        $this->domain = $GLOBALS['config']['domain'];
+        $this->url = $GLOBALS['config']['url'];
         if ($this->redis == true) {
             Lredis::getInstance();
-
-            // 清除上次运行的数据
-            Lredis::getInstance()->del($this->redisPrefix.'queue');
-            Lredis::getInstance()->del($this->redisPrefix.'doneQueue');
-            $keys = Lredis::getInstance()->keys($this->redisPrefix."*");
-            foreach ($keys as $key => $value) {
-                Lredis::getInstance()->del($value);
-            }
         }
         if ($this->fork) {
             if ($this->redis == false) {
@@ -83,12 +86,35 @@ class Spider
                 throw SpiderException::err('多线程需要开启pcntl_fork');
             }
         }
+        // 清除上次的数据
+        if ($this->clear == true) {
+            $this->clear();
+        }
+        // 设置开始时间
+        Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
+
         $curl = new CurlRequest();
         $curl->setUserAgent();
-        $curl->setReferer($GLOBALS['config']['url']);
-        $url = $GLOBALS['config']['url'];
-//        $url = 'http://www.qiushibaike.com/article/118022870';
-        $this->spiderBegin($url, $curl);
+        $curl->setReferer($this->url);
+        $this->spiderBegin($this->url, $curl);
+    }
+
+    /**
+     * 清除数据
+     */
+    public function clear()
+    {
+
+        if ($this->redis == true) {
+            // 清除redis缓存
+            $keys = Lredis::getInstance()->keys($this->redisPrefix."*");
+            foreach ($keys as $key => $value) {
+                Lredis::getInstance()->del($value);
+            }
+        }
+        // 清除日志
+        @unlink($this->domain.'.log');
+        
     }
 
     /**
@@ -119,15 +145,15 @@ class Spider
         $this->successNum = 0;
         $this->getHtml($url, $curl);
         while ($this->getUrlQueueNum() > 0) {
-//            usleep(200000);
+            usleep($this->usleep);
             $url = $this->getUrlQueueOne();
-            if (strpos($url, $GLOBALS['config']['domain']) === false) {
-                $url = $GLOBALS['config']['domain'].$url;
+            if (strpos($url, $this->domain) === false) {
+                $url = $this->domain.$url;
             }
             // 保证进程有工作做
-            if ($this->queue > $this->fork * 2 && $this->fork > 0) {
-                $this->fork--;
+            if (Lredis::getInstance()->lLen($this->redisPrefix.'queue') > $this->fork * 2 && $this->fork > $this->forkId) {
                 $this->forkId++;
+                // 启动子进程
                 $this->startPcntlFork($curl);
             }
             $this->getHtml($url, $curl);
@@ -138,20 +164,24 @@ class Spider
     public function startPcntlFork(CurlRequest $curl)
     {
         $pid = pcntl_fork();
+        Lredis::getInstance()->close();
         if ($pid) {
+            $this->beginTime = time();
             $this->thisForkId = $this->forkId;
             $this->failNum = 0;
             $this->successNum = 0;
+            Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
             while ($this->getUrlQueueNum() > 0) {
+                usleep($this->usleep);
                 $url = $this->getUrlQueueOne();
-                if (strpos($url, $GLOBALS['config']['domain']) === false) {
-                    $url = $GLOBALS['config']['domain'].$url;
+                if (strpos($url, $this->domain) === false) {
+                    $url = $this->domain . $url;
                 }
                 $this->getHtml($url, $curl);
             }
             die();
         } else {
-//            Log::infoLog('启动进程失败'.$pid);
+            Log::infoLog('启动进程失败');
         }
     }
 
@@ -165,17 +195,21 @@ class Spider
     {
         $curl->curl($url);
         $httpCode = $curl->curlInfo['http_code'];
-        if (in_array($httpCode, ['0', '503'])) {
+        
+        if ($httpCode != 200) {
+            Log::infoLog($url.' 请求失败, http_code : '.$httpCode);
+        }
 
-            Log::infoLog($url.' 请求失败, http_code : '.$httpCode.' 请求频率应该过高');
+        if (in_array($httpCode, ['0', '503', '502'])) {
             $this->addUrlQueue($this->queueUrl);
             $this->failNum++;
+            Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
             return false;
 
         } elseif (in_array($httpCode, ['404'])) {
 
-            Log::infoLog($url.' 请求失败, http_code : '.$httpCode);
             $this->failNum++;
+            Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
             $this->addDoneQueue();
             return false;
 
@@ -186,9 +220,12 @@ class Spider
         }
 
         $this->addDoneQueue();
-        $this->successNum++;
         $this->getHtmlUrl($curl->content);
         $this->getHtmlFields($curl->content, $url);
+        $this->successNum++;
+        Lredis::getInstance()->set($this->redisPrefix.'successNum'.$this->thisForkId, $this->successNum);
+        $this->memory = memory_get_usage();
+        Lredis::getInstance()->set($this->redisPrefix.'memory'.$this->thisForkId, $this->memory);
         return true;
     }
 
@@ -198,7 +235,7 @@ class Spider
 
         $str = '';
         $str .= 'php version: '. PHP_VERSION."\r\n";
-        $str .= 'target stie: '. $GLOBALS['config']['domain']."\r\n";
+        $str .= 'target stie: '. $this->domain."\r\n";
         $str .= 'begin time : '. date("Y-m-d H:i:s", $this->beginTime).str_pad('',6);
         $str .= 'run time : '. sprintf("%.3f", (time() - $this->beginTime) / 3600) ." hours\r\n";
         $str .= str_pad("", 70, "-")."\r\n";
@@ -207,23 +244,36 @@ class Spider
         $str .= "mem".str_pad("", 20-strlen("mem"));
         $str .= "speed".str_pad("", 20-strlen("speed"));
         $str .= "\r\n";
-        $str .= $this->successNum.str_pad('', 20-strlen($this->successNum));
-        $str .= $this->failNum.str_pad('', 20-strlen($this->failNum));
-        $mem = sprintf("%.2f", memory_get_usage() / 1000000);
-        $str .= $mem.'m'.str_pad('', 20-strlen($mem));
-        $time = time() - $this->beginTime;
-        $speed = sprintf("%.2f", $time ? $this->successNum / $time : $time);
-        $str .= $speed.'/s'.str_pad('', 20-strlen($speed));
-        $str .= "\r\n";
+        for ($i = 1; $i <= $this->forkId; $i++) {
+
+            $failNum = Lredis::getInstance()->get($this->redisPrefix.'failNum'.$i);
+            $successNum = Lredis::getInstance()->get($this->redisPrefix.'successNum'.$i);
+            $memory = Lredis::getInstance()->get($this->redisPrefix.'memory'.$i);
+            $beginTime = Lredis::getInstance()->get($this->redisPrefix.'beginTime'.$i);
+
+            $str .= $successNum.str_pad('', 20-strlen($successNum));
+            $str .= $failNum.str_pad('', 20-strlen($failNum));
+            $memory = sprintf("%.2f", $memory / 1000000);
+            $str .= $memory.'m'.str_pad('', 20-strlen($memory));
+            $time = time() - $beginTime;
+            $speed = sprintf("%.2f", $time ? $successNum / $time : $time);
+            $str .= $speed.'/s'.str_pad('', 20-strlen($speed));
+            $str .= "\r\n";
+
+        }
         $str .= str_pad("", 70, "-")."\r\n";
         $str .= "total".str_pad("", 20-strlen("total"));
         $str .= "queue".str_pad("", 20-strlen("queue"));
         $str .= "\r\n";
         $str .= $this->total.str_pad("", 20-strlen($this->total));
+        
         if ($this->redis == true) {
-            $str .= Lredis::getInstance()->lLen($this->redisPrefix . 'queue').str_pad("", 20-strlen(Lredis::getInstance()->lLen($this->redisPrefix . 'queue')));
+            $queue = Lredis::getInstance()->lLen($this->redisPrefix . 'queue');
+            $str .= $queue.str_pad("", 20-strlen($queue));
+            
         } else {
             $str .= count($this->queue).str_pad("", 20-strlen(count($this->queue)));
+            
         }
         $str .= "\r\n";
 //        foreach (self::$infoLog as $key => $value) {
@@ -240,7 +290,7 @@ class Spider
      */
     public function getHtmlFields($content, $url)
     {
-        $url = str_replace($GLOBALS['config']['url'], '', $url);
+        $url = str_replace($this->domain, '', $url);
         $match = '';
         foreach ($GLOBALS['config']['match_html'] as $key => $value) {
             if (preg_match('/\((.*)\)/', $value['url'], $pattern)) {
@@ -249,7 +299,7 @@ class Spider
                 $result = preg_match("/$value[url]/", $url);
             }
             if ($result) {
-                $table = $value['table'];
+                $table = isset($value['table']) ? $value['table'] : '';
                 if (isset($GLOBALS['config']['match_html'][$key]['match'])) {
                     $match = $GLOBALS['config']['match_html'][$key]['match'];
                 }
@@ -276,6 +326,7 @@ class Spider
         if (isset($table)) {
             Db::table($table)->insert($data);
         }
+        return true;
     }
 
     /**
@@ -301,38 +352,28 @@ class Spider
      */
     public function addUrlQueue($url)
     {
-        if (is_array($url)) {
-            if ($this->redis == true) {
-                foreach ($url as $key => $value) {
-                    if (!Lredis::getInstance()->exists($this->redisPrefix.md5($value))) {
-                        Lredis::getInstance()->rPush($this->redisPrefix.'queue', $value);
-                        Lredis::getInstance()->set($this->redisPrefix.md5($value), $value);
-                    }
-                }
-            } else {
-                foreach ($url as $key => $value) {
-                    if (array_search($value, $this->queue) === false
-                        && array_search($value, $this->doneQueue) === false) {
-                        array_push($this->queue, $value);
-                    }
-                }
-            }
-
-        } else {
-            if ($this->redis == true) {
-                if (!Lredis::getInstance()->exists($this->redisPrefix.md5($url))) {
-                    Lredis::getInstance()->rPush($this->redisPrefix.'queue', $url);
-                    Lredis::getInstance()->set($this->redisPrefix.md5($url), $url);
-                }
-            } else {
-                if (array_search($url, $this->queue) === false && array_search($url, $this->doneQueue) === false) {
-                    array_push($this->queue, $url);
-                }
-            }
+        if (!is_array($url)) {
+            $url = [$url];
         }
         if ($this->redis == true) {
+            foreach ($url as $key => $value) {
+                if (!Lredis::getInstance()->exists($this->redisPrefix.md5($value))) {
+
+                    Lredis::getInstance()->rPush($this->redisPrefix.'queue', $value);
+                    Lredis::getInstance()->set($this->redisPrefix.md5($value), $value);
+
+                }
+            }
             $this->total = Lredis::getInstance()->lLen($this->redisPrefix . 'queue') + Lredis::getInstance()->lLen($this->redisPrefix . 'doneQueue');
         } else {
+            foreach ($url as $key => $value) {
+                if (array_search($value, $this->queue) === false
+                    && array_search($value, $this->doneQueue) === false) {
+
+                    array_push($this->queue, $value);
+
+                }
+            }
             $this->total = count($this->queue) + count($this->doneQueue);
         }
 
