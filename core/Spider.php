@@ -182,6 +182,7 @@ class Spider
         Db::closeDb();
 
         if ($pid) {
+
             $this->beginTime = time();
             $this->thisForkId = $this->forkId;
             $this->failNum = 0;
@@ -195,6 +196,7 @@ class Spider
                 $this->getHtml($url, $curl);
                 $this->setStatus();
             }
+
         } else {
 //            Log::infoLog('启动进程失败');
         }
@@ -345,11 +347,13 @@ class Spider
                 }
             }
         }
-
-        $data['url'] = $this->domain.$url;
-        if (isset($table)) {
-            Db::table($table)->insert($data);
+        if (!empty($data)) {
+            $data['url'] = $this->domain.$url;
+            if (isset($table)) {
+                Db::table($table)->insert($data);
+            }
         }
+
         return true;
     }
 

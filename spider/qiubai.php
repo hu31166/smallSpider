@@ -9,17 +9,15 @@ $GLOBALS['config'] = [
     'show_log' => true, // 显示日志, 终端显示最新10条
     'match_html' => [
         [
-            'table' => 'qiubai',
             'url' => 'href=\"(\/article\/\d+)\"',
+            'table' => 'qiubai',
             'match' => [
                     [
                         'name' => 'content',
                         'xpath' => '/html/body/div[2]/div/div[1]/div[3]/div[2]/div[1]',
-                        'type' => 'insert',
                     ],[
                         'name' => 'user',
                         'xpath' => '/html/body/div[2]/div/div[1]/div[3]/div[1]/a[2]/h2',
-                        'type' => 'insert',
                     ]
                 ]
         ],[
