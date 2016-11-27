@@ -36,6 +36,12 @@ class Db
         }
     }
 
+    public static function closeDb()
+    {
+        self::$db = null;
+        self::$_instance = null;
+    }
+
     /**
      * 单例模式
      * @return Db|null
@@ -71,14 +77,18 @@ class Db
      * @return mixed
      */
     public function insert($data){
+        $bind = [];
+        $fields = [];
+        $values = [];
         foreach ($data as $key => $value) {
             $value = htmlspecialchars($value);
             $fields[] = "`$key`";
-            $values[] = "'$value'";
+            $values[] = "?";
+            $bind[] = $value;
         }
         $sql = "INSERT INTO ".self::$table.' ('.(implode(',', $fields)).') values('.(implode(',', $values)).')';
         $stmt =  self::$db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($bind);
         $this->error($stmt, $sql);
         return self::$db->lastInsertId();
     }
@@ -120,11 +130,12 @@ class Db
         $this->error($stmt, $sql);
         return $stmt->fetchAll(\PDO::FETCH_NAMED);
     }
+
     /**
-     * @param $stmt \PDO
+     * @param \PDOStatement $stmt
      * @param $sql
      */
-    public function error($stmt, $sql)
+    public function error(\PDOStatement $stmt, $sql)
     {
         if ($stmt->errorCode() !== '00000') {
             $errorInfo = $stmt->errorInfo();

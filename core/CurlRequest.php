@@ -12,7 +12,7 @@ namespace core;
 class CurlRequest
 {
 
-    public $timeout = 30;
+    public $timeout = 10;
 
     public $header = [];
 
@@ -40,7 +40,8 @@ class CurlRequest
             curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($query) ? http_build_query($query) : $query);
         }
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+//        curl_setopt($ch,CURLOPT_PROXY, '60.22.213.9:8998');
         curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
         curl_setopt($ch, CURLOPT_REFERER, $this->referer);
@@ -51,14 +52,12 @@ class CurlRequest
         $this->content = curl_exec($ch);
         $this->curlInfo = curl_getinfo($ch);
         // 全部转utf-8
-        $encode = mb_detect_encoding($this->content, array('ASCII', 'GB2312', 'GBK', 'UTF-8', 'CP936'));
-        $encode = !$encode ? 'GBK' : $encode;
-        if ($encode != 'UTF-8') {
+        $encode = get_encode($this->content);
+        if ($encode != 'UTF-8' && !preg_match('/<meta(.*)charset=utf-8(.*)>/is', $this->content)) {
             $this->content = mb_convert_encoding($this->content, 'utf-8', $encode);
             $this->content = preg_replace("/<meta([^>]*)charset=([^>]*)>/is", '<meta charset="UTF-8">', $this->content);
         }
         curl_close($ch);
-//        Log::infoLog($this->content);
         $this->url = $url;
         $this->setResponseCookie($this->content);
     }
@@ -100,7 +99,6 @@ class CurlRequest
      */
     public function setUserAgent($userAgent = false)
     {
-
 
         $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36';
         $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0';

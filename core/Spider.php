@@ -78,7 +78,7 @@ class Spider
         if ($this->redis == true) {
             Lredis::getInstance();
         }
-        if ($this->fork) {
+        if ($this->fork > 1) {
             if ($this->redis == false) {
                 throw SpiderException::err('多线程需要开启redis');
             }
@@ -90,9 +90,8 @@ class Spider
         if ($this->clear == true) {
             $this->clear();
         }
-        // 设置开始时间
-        Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
 
+        // 设置开始时间
         $curl = new CurlRequest();
         $curl->setUserAgent();
         $curl->setReferer($this->url);
@@ -104,7 +103,6 @@ class Spider
      */
     public function clear()
     {
-
         if ($this->redis == true) {
             // 清除redis缓存
             $keys = Lredis::getInstance()->keys($this->redisPrefix."*");
@@ -117,6 +115,16 @@ class Spider
         
     }
 
+    /**
+     * 设置任务状态
+     */
+    public function setStatus()
+    {
+        Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
+        Lredis::getInstance()->set($this->redisPrefix.'successNum'.$this->thisForkId, $this->successNum);
+        Lredis::getInstance()->set($this->redisPrefix.'memory'.$this->thisForkId, $this->memory);
+        Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
+    }
     /**
      * 命令参数
      */
@@ -151,37 +159,44 @@ class Spider
                 $url = $this->domain.$url;
             }
             // 保证进程有工作做
-            if (Lredis::getInstance()->lLen($this->redisPrefix.'queue') > $this->fork * 2 && $this->fork > $this->forkId) {
-                $this->forkId++;
-                // 启动子进程
-                $this->startPcntlFork($curl);
+            if ($this->redis == true) {
+                if (Lredis::getInstance()->lLen($this->redisPrefix.'queue') > $this->fork * ($this->forkId + 1) && $this->fork > $this->forkId) {
+                    $this->forkId++;
+                    // 启动子进程
+                    $this->startPcntlFork($curl);
+                }
             }
+
             $this->getHtml($url, $curl);
+            $this->setStatus();
             $this->panel();
         }
+        die('进程结束');
     }
 
     public function startPcntlFork(CurlRequest $curl)
     {
         $pid = pcntl_fork();
+
         Lredis::getInstance()->close();
+        Db::closeDb();
+
         if ($pid) {
             $this->beginTime = time();
             $this->thisForkId = $this->forkId;
             $this->failNum = 0;
             $this->successNum = 0;
-            Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
-            while ($this->getUrlQueueNum() > 0) {
+            while ($this->getUrlQueueNum() > $this->fork * $this->thisForkId) {
                 usleep($this->usleep);
                 $url = $this->getUrlQueueOne();
                 if (strpos($url, $this->domain) === false) {
                     $url = $this->domain . $url;
                 }
                 $this->getHtml($url, $curl);
+                $this->setStatus();
             }
-            die();
         } else {
-            Log::infoLog('启动进程失败');
+//            Log::infoLog('启动进程失败');
         }
     }
 
@@ -193,23 +208,21 @@ class Spider
      */
     public function getHtml($url, CurlRequest $curl)
     {
+
         $curl->curl($url);
         $httpCode = $curl->curlInfo['http_code'];
-        
-        if ($httpCode != 200) {
+
+        if (!in_array($httpCode, [200, 301, 302])) {
             Log::infoLog($url.' 请求失败, http_code : '.$httpCode);
         }
-
         if (in_array($httpCode, ['0', '503', '502'])) {
             $this->addUrlQueue($this->queueUrl);
             $this->failNum++;
-            Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
             return false;
 
         } elseif (in_array($httpCode, ['404'])) {
 
             $this->failNum++;
-            Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
             $this->addDoneQueue();
             return false;
 
@@ -223,9 +236,7 @@ class Spider
         $this->getHtmlUrl($curl->content);
         $this->getHtmlFields($curl->content, $url);
         $this->successNum++;
-        Lredis::getInstance()->set($this->redisPrefix.'successNum'.$this->thisForkId, $this->successNum);
         $this->memory = memory_get_usage();
-        Lredis::getInstance()->set($this->redisPrefix.'memory'.$this->thisForkId, $this->memory);
         return true;
     }
 
@@ -245,11 +256,18 @@ class Spider
         $str .= "speed".str_pad("", 20-strlen("speed"));
         $str .= "\r\n";
         for ($i = 1; $i <= $this->forkId; $i++) {
+            if ($this->redis == true) {
+                $failNum = Lredis::getInstance()->get($this->redisPrefix.'failNum'.$i);
+                $successNum = Lredis::getInstance()->get($this->redisPrefix.'successNum'.$i);
+                $memory = Lredis::getInstance()->get($this->redisPrefix.'memory'.$i);
+                $beginTime = Lredis::getInstance()->get($this->redisPrefix.'beginTime'.$i);
+            } else {
+                $failNum = $this->failNum;
+                $successNum = $this->successNum;
+                $memory = $this->memory;
+                $beginTime = $this->beginTime;
+            }
 
-            $failNum = Lredis::getInstance()->get($this->redisPrefix.'failNum'.$i);
-            $successNum = Lredis::getInstance()->get($this->redisPrefix.'successNum'.$i);
-            $memory = Lredis::getInstance()->get($this->redisPrefix.'memory'.$i);
-            $beginTime = Lredis::getInstance()->get($this->redisPrefix.'beginTime'.$i);
 
             $str .= $successNum.str_pad('', 20-strlen($successNum));
             $str .= $failNum.str_pad('', 20-strlen($failNum));
@@ -276,9 +294,11 @@ class Spider
             
         }
         $str .= "\r\n";
-//        foreach (self::$infoLog as $key => $value) {
-//            $str .= $value;
-//        }
+        if ($GLOBALS['config']['show_log'] == true) {
+            foreach (self::$infoLog as $key => $value) {
+                $str .= $value;
+            }
+        }
         echo $str;
     }
 
@@ -319,10 +339,14 @@ class Spider
             if (!is_null($elements)) {
                 foreach ($elements as $element) {
                     $data[$value['name']] = $element->nodeValue;
+                    if (isset($GLOBALS['config']['callback']['fields'])) {
+                        $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']]);
+                    }
                 }
             }
         }
-        $data['url'] = $url;
+
+        $data['url'] = $this->domain.$url;
         if (isset($table)) {
             Db::table($table)->insert($data);
         }

@@ -49,6 +49,17 @@ function is_serialized( $data ) {
     return false;
 }
 
+/**
+ * 编码
+ * @param $string
+ * @return string
+ */
+function get_encode($string)
+{
+    $encode = mb_detect_encoding($string, array('ASCII', 'GB2312', 'GBK', 'UTF-8'));
+    return !$encode ? 'GBK' : $encode;
+}
+
 
 
 

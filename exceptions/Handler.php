@@ -8,14 +8,14 @@ class Handler extends \Exception
     {
         if ($e = error_get_last()) {
             $string = $e['message'].'. file '. $e['file'].'. line '. $e['line'];
-            Log::infoLog($string);
+            Log::errorLog($string);
         }
     }
 
     public static function error($errno, $errstr, $errfile, $errline)
     {
         $string = $errno.'. message '.$errstr.'. file '. $errfile.'. line '. $errline;
-        Log::infoLog($string);
+        Log::errorLog($string);
     }
 
     /**
@@ -25,6 +25,6 @@ class Handler extends \Exception
     public static function exceptionError(\Exception $e)
     {
         $string = $e->getMessage().'. file '. $e->getFile().'. line '.$e->getLine() ;
-        Log::infoLog($string);
+        Log::errorLog($string);
     }
 }
