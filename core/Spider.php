@@ -312,6 +312,7 @@ class Spider
      */
     public function getHtmlFields($content, $url)
     {
+
         $url = str_replace($this->domain, '', $url);
         $match = '';
         foreach ($GLOBALS['config']['match_html'] as $key => $value) {
@@ -332,6 +333,7 @@ class Spider
             return false;
         }
         libxml_use_internal_errors(true);
+        $encode = get_encode($content);
         $doc = new \DOMDocument();
         @$doc->loadHTML('<?xml encoding="UTF-8">'.$content);
         $xpath = new \DOMXPath($doc);
@@ -342,7 +344,7 @@ class Spider
                 foreach ($elements as $element) {
                     $data[$value['name']] = $element->nodeValue;
                     if (isset($GLOBALS['config']['callback']['fields'])) {
-                        $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']]);
+                        $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']], $encode);
                     }
                 }
             }

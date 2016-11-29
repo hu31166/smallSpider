@@ -2,7 +2,7 @@
 $GLOBALS['config'] = [
     'domain' => 'www.qiushibaike.com', // 域名
     'url' => 'www.qiushibaike.com', // 入口地址
-    'fork' => 4, // 进程数量
+    'fork' => 0, // 进程数量
     'redis' => true, // 是否启用redis
     'clear' => true, // 开启redis情况下, 是否清除上次数据
     'usleep' => 600000, // 睡眠时间, 单位微秒
@@ -25,9 +25,11 @@ $GLOBALS['config'] = [
         ]
     ],
     'callback' => [
-        'fields' => function($key, $value) {
+        'fields' => function($key, $value, $encode) {
             // 入库处理字段数据回调方法
-            $encode = get_encode($value);
+            if ($encode == 'ISO-8859-1') {
+                $value = utf8_decode($value);
+            }
             if ($encode == 'CP936' && !empty($value)) {
                 if (iconv('utf-8', 'latin1//IGNORE', $value)) {
                     $value = iconv('utf-8', "latin1//IGNORE", $value);

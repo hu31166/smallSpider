@@ -53,7 +53,7 @@ class CurlRequest
         $this->curlInfo = curl_getinfo($ch);
         // 全部转utf-8
         $encode = get_encode($this->content);
-        if ($encode != 'UTF-8' && !preg_match('/<meta(.*)charset=utf-8(.*)>/is', $this->content)) {
+        if (!preg_match('/<meta(.*)charset=utf-8(.*)>/is', $this->content)) {
             $this->content = mb_convert_encoding($this->content, 'utf-8', $encode);
             $this->content = preg_replace("/<meta([^>]*)charset=([^>]*)>/is", '<meta charset="UTF-8">', $this->content);
         }

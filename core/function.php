@@ -56,7 +56,7 @@ function is_serialized( $data ) {
  */
 function get_encode($string)
 {
-    $encode = mb_detect_encoding($string, array('ASCII', 'GB2312', 'GBK', 'UTF-8'));
+    $encode = mb_detect_encoding($string, ['UTF-8', 'GBK', 'GB2312', 'LATIN1', 'ASCII', 'BIG5']);
     return !$encode ? 'GBK' : $encode;
 }
 
