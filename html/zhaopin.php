@@ -1,6 +1,6 @@
 <?php
 $path = dirname(__FILE__).'/';
-define('APP_PATH', str_replace('html/', '', $path));
+define('APP_PATH', dirname(dirname(__FILE__)));
 include_once '../core/init.php';
 $GLOBALS['config']['domain'] = 'zhaopinhtml';
 
