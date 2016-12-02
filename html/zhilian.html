@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>zhilian Charts</title>
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <!-- Bootstrap 3.3.6 -->
+    <link rel="stylesheet" href="./bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="http://cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <!-- Ionicons -->
+    <link rel="stylesheet" href="http://cdn.bootcss.com/ionicons/2.0.1/css/ionicons.min.css">
+    <!-- Morris charts -->
+    <link rel="stylesheet" href="./morris.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="./AdminLTE.min.css">
+    <!-- AdminLTE Skins. Choose a skin from the css/skins
+         folder instead of downloading all of them to reduce the load. -->
+
+</head>
+<body class="hold-transition skin-blue sidebar-mini">
+
+
+<section class="content">
+    <div class="row">
+        <!-- /.col (LEFT) -->
+        <div class="col-md-8">
+            <!-- LINE CHART -->
+            <div class="box box-info">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Line Chart</h3>
+
+                    <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="box-body chart-responsive">
+                    <div class="chart" id="line-chart" style="height: 300px;"></div>
+                </div>
+                <!-- /.box-body -->
+            </div>
+            <!-- /.box -->
+
+            <!--&lt;!&ndash; BAR CHART &ndash;&gt;-->
+            <!--<div class="box box-success">-->
+                <!--<div class="box-header with-border">-->
+                    <!--<h3 class="box-title">Bar Chart</h3>-->
+
+                    <!--<div class="box-tools pull-right">-->
+                        <!--<button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>-->
+                        <!--</button>-->
+                        <!--<button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>-->
+                    <!--</div>-->
+                <!--</div>-->
+                <!--<div class="box-body chart-responsive">-->
+                    <!--<div class="chart" id="bar-chart" style="height: 300px;"></div>-->
+                <!--</div>-->
+                <!--&lt;!&ndash; /.box-body &ndash;&gt;-->
+            <!--</div>-->
+            <!-- /.box -->
+        </div>
+        <!-- /.col (RIGHT) -->
+    </div>
+    <!-- /.row -->
+
+</section>
+
+
+<script src="./jQuery-2.2.0.min.js"></script>
+<script src="http://cdn.bootcss.com/raphael/2.0.2/raphael-min.js"></script>
+<script src="./morris.min.js"></script>
+<script>
+    var data = '';
+    var ykeys = '';
+    var labels = '';
+    var lineColors = '';
+    var line = '';
+    $(function () {
+        $.get("zhaopin.php",{type:'51'},function(result){
+            data = result.data;
+            ykeys = result.ykeys;
+            labels = result.labels;
+            lineColors = result.lineColors;
+            line = new Morris.Line({
+                element: 'line-chart',
+                data: data,
+                xLabels: "day",
+                xkey: 'time',
+                ykeys: ykeys,
+                labels: labels,
+                barColors:lineColors,
+                hideHover: 'auto'
+            });
+        }, "json");
+
+        // LINE CHART
+
+
+
+        //BAR CHART
+//        var bar = new Morris.Bar({
+//            element: 'bar-chart',
+//            resize: true,
+//            data: [
+//                {y: '2006', a: 100, b: 90},
+//                {y: '2007', a: 75, b: 65},
+//                {y: '2008', a: 50, b: 40},
+//                {y: '2009', a: 75, b: 65},
+//                {y: '2010', a: 50, b: 40},
+//                {y: '2011', a: 75, b: 65},
+//                {y: '2012', a: 100, b: 90}
+//            ],
+//            barColors: ['#00a65a', '#f56954'],
+//            xkey: 'y',
+//            ykeys: ['a', 'b'],
+//            labels: ['CPU', 'DISK'],
+//            hideHover: 'auto'
+//        });
+    });
+</script>
+</body>
+</html>
