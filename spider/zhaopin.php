@@ -5,7 +5,7 @@ libxml_use_internal_errors(true);
 $curl = new \core\CurlRequest();
 $curl->setUserAgent();
 
-$searchArr = ['php', 'java', 'ios', 'android', '.net', '前端', '产品经理'];
+$searchArr = ['php', 'java', 'ios', 'android', '.net', '前端', '产品经理', 'node'];
 
 foreach ($searchArr as $value) {
     $value = urlencode($value);

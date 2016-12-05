@@ -4,7 +4,7 @@ define('APP_PATH', dirname(dirname(__FILE__)).'/');
 include_once '../core/init.php';
 $GLOBALS['config']['domain'] = 'zhaopinhtml';
 
-$searchArr = ['java', '前端', '.net', 'php', 'android', 'ios'];
+$searchArr = ['java', '前端', '.net', 'php', 'android', 'ios', 'node'];
 $siteName = $_GET['type'];
 $data = [];
 foreach ($searchArr as $key => $value) {
