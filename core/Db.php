@@ -25,19 +25,17 @@ class Db
 
     private $molecule = '';
 
-    public function __construct()
-    {
+    public function __construct() {
     }
 
-    public static function connect(){
+    public static function connect() {
         if (self::$db == null) {
             self::$db = new \PDO(self::$type . ':host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
             self::$db->query('set names utf8');
         }
     }
 
-    public static function closeDb()
-    {
+    public static function closeDb() {
         self::$db = null;
         self::$_instance = null;
     }
@@ -46,7 +44,7 @@ class Db
      * 单例模式
      * @return Db|null
      */
-    private static function getInstance(){
+    private static function getInstance() {
 
         if(self::$_instance == null) return self::$_instance = new self();
         else return self::$_instance;
@@ -61,8 +59,7 @@ class Db
         return self::getInstance();
     }
 
-    public static function table($tableName)
-    {
+    public static function table($tableName) {
         if (empty($tableName)) {
             SpiderException::err('table name is not empty');
         }
@@ -76,7 +73,7 @@ class Db
      * @param $data
      * @return mixed
      */
-    public function insert($data){
+    public function insert($data) {
         $bind = [];
         $fields = [];
         $values = [];
@@ -115,16 +112,14 @@ class Db
     }
 
 
-    public function find($sql)
-    {
+    public function find($sql) {
         $stmt = self::$db->prepare($sql);
         $stmt->execute();
         $this->error($stmt, $sql);
         return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 
-    public function findAll($sql)
-    {
+    public function findAll($sql) {
         $stmt = self::$db->prepare($sql);
         $stmt->execute();
         $this->error($stmt, $sql);
@@ -135,8 +130,7 @@ class Db
      * @param \PDOStatement $stmt
      * @param $sql
      */
-    public function error(\PDOStatement $stmt, $sql)
-    {
+    public function error(\PDOStatement $stmt, $sql) {
         if ($stmt->errorCode() !== '00000') {
             $errorInfo = $stmt->errorInfo();
             throw SpiderException::err('error: '.end($errorInfo).', Sql: '.$sql );
