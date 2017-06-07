@@ -112,7 +112,7 @@ class Spider
         }
         // 清除日志
         @unlink($this->domain.'.log');
-        
+
     }
 
     /**
@@ -120,10 +120,12 @@ class Spider
      */
     public function setStatus()
     {
-        Lredis::getInstance()->set($this->redisPrefix.'failNum'.$this->thisForkId, $this->failNum);
-        Lredis::getInstance()->set($this->redisPrefix.'successNum'.$this->thisForkId, $this->successNum);
-        Lredis::getInstance()->set($this->redisPrefix.'memory'.$this->thisForkId, $this->memory);
-        Lredis::getInstance()->set($this->redisPrefix.'beginTime'.$this->thisForkId, $this->beginTime);
+        if ($this->redis == true) {
+            Lredis::getInstance()->set($this->redisPrefix . 'failNum' . $this->thisForkId, $this->failNum);
+            Lredis::getInstance()->set($this->redisPrefix . 'successNum' . $this->thisForkId, $this->successNum);
+            Lredis::getInstance()->set($this->redisPrefix . 'memory' . $this->thisForkId, $this->memory);
+            Lredis::getInstance()->set($this->redisPrefix . 'beginTime' . $this->thisForkId, $this->beginTime);
+        }
     }
     /**
      * 命令参数
@@ -210,7 +212,6 @@ class Spider
      */
     public function getHtml($url, CurlRequest $curl)
     {
-
         $curl->curl($url);
         $httpCode = $curl->curlInfo['http_code'];
 
