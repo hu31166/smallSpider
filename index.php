@@ -1,8 +1,4 @@
 <?php
-$a = ['a', 'b', 'c'];
-echo current($a);
-foreach ($a as $value) {
-    reset($a);
-    echo current($a);
-}
+$a = 'forum.php?mod=viewthread&amp;tid=1125296&amp;extra=page%3D1';
+echo html_entity_decode($a);
 ?>

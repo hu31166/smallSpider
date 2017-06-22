@@ -30,6 +30,8 @@ class CurlRequest
 
     public function curl($url, $query = '', $type = 'GET')
     {
+        $url = html_entity_decode(urldecode($url));
+        Log::infoLog($url);
         $ch	= curl_init();
         if ($type == 'GET' && $query) {
             $url  = $url.'?'.(is_array($query) ? http_build_query($query) : $query);
@@ -101,7 +103,7 @@ class CurlRequest
     {
 
         $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36';
-        $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:49.0) Gecko/20100101 Firefox/49.0';
+        $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:53.0) Gecko/20100101 Firefox/53.0';
 
         if ($userAgent) {
             $this->userAgent = $userAgent;
