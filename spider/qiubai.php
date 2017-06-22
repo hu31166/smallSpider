@@ -9,6 +9,7 @@ $GLOBALS['config'] = [
     'clear' => true, // 开启redis情况下, 是否清除上次数据
     'usleep' => 600000, // 睡眠时间, 单位微秒
     'show_log' => true, // 显示日志, 终端显示最新10条
+    'proxy' => true, // 是否启用IP代理
     'match_html' => [
         [
             'url' => 'href=\"(\/article\/\d+)\"',

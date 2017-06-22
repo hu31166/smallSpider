@@ -64,6 +64,12 @@ class Spider
 
     public $url = '';
 
+    /**
+     * @var CurlRequest
+     */
+    public $curl = '';
+
+
     public function start()
     {
         $this->command();
@@ -92,10 +98,15 @@ class Spider
         }
 
         // 设置开始时间
-        $curl = new CurlRequest();
+        $this->curl = $curl = new CurlRequest();
         $curl->setUserAgent();
         $curl->setReferer($this->url);
-        $this->spiderBegin($this->url, $curl);
+        if (isset($GLOBALS['config']['proxy'])  && $GLOBALS['config']['proxy'] == true) {
+            $curl->setProxy();
+        }
+        $this->addUrlQueue($this->url);
+        $this->spiderBegin($curl);
+
     }
 
     /**
@@ -150,11 +161,14 @@ class Spider
      * @param $url
      * @param CurlRequest $curl
      */
-    public function spiderBegin($url, CurlRequest $curl)
+    public function spiderBegin(CurlRequest $curl)
     {
+        Log::infoLog('队列数量：'.$this->getUrlQueueNum());
         $this->failNum = 0;
         $this->successNum = 0;
+        $url = $this->getUrlQueueOne();
         $this->getHtml($url, $curl);
+        Log::infoLog('队列数量：'.$this->getUrlQueueNum());
         while ($this->getUrlQueueNum() > 0) {
             usleep($this->usleep);
             $url = $this->getUrlQueueOne();
@@ -173,6 +187,7 @@ class Spider
             $this->getHtml($url, $curl);
             $this->setStatus();
             $this->panel();
+            Log::infoLog('队列数量：'.$this->getUrlQueueNum());
         }
         die('进程结束');
     }
@@ -253,6 +268,7 @@ class Spider
         $str .= 'target stie: '. $this->domain."\r\n";
         $str .= 'begin time : '. date("Y-m-d H:i:s", $this->beginTime).str_pad('',6);
         $str .= 'run time : '. sprintf("%.3f", (time() - $this->beginTime) / 3600) ." hours\r\n";
+        $str .= 'ips : '.count($this->curl->ips)."\r\n";
         $str .= str_pad("", 70, "-")."\r\n";
         $str .= "success".str_pad("", 20-strlen("success"));
         $str .= "failed".str_pad("", 20-strlen("failed"));
@@ -347,21 +363,24 @@ class Spider
         $xpath = new \DOMXPath($doc);
         $data = [];
         foreach ($match as $key => $value) {
+            if (isset($value['value'])) {
+                $data['category'] = $value['value'];
+                continue;
+            }
             $elements = $xpath->query($value['xpath']);
 
             if (!is_null($elements)) {
                 foreach ($elements as $element) {
-//                    $element->nodeValue
-                    $data[$value['name']] = $doc->saveXml($element);
+//                    $data[$value['name']] = $doc->saveXml($element);
+                    $data[$value['name']] = $element->nodeValue;
                     if (isset($GLOBALS['config']['callback']['fields'])) {
                         $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']], $encode);
                     }
                 }
             }
         }
-        if (!empty($data)) {
+            if (!empty($data)) {
             $data['url'] = $this->domain.$url;
-            $data['html'] = $content;
             if (isset($table)) {
                 Db::table($table)->insert($data);
             }

@@ -28,10 +28,15 @@ class CurlRequest
 
     public $url = '';
 
+    public $ips = [];
+
+    public $ipError = [];
+
+    public $num = [];
+
     public function curl($url, $query = '', $type = 'GET')
     {
         $url = html_entity_decode(urldecode($url));
-        Log::infoLog($url);
         $ch	= curl_init();
         if ($type == 'GET' && $query) {
             $url  = $url.'?'.(is_array($query) ? http_build_query($query) : $query);
@@ -43,7 +48,10 @@ class CurlRequest
         }
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//        curl_setopt($ch,CURLOPT_PROXY, '60.22.213.9:8998');
+        if ($this->ips) {
+            $proxy = $this->getProxy();
+            curl_setopt($ch,CURLOPT_PROXY, $proxy);
+        }
         curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
         curl_setopt($ch, CURLOPT_REFERER, $this->referer);
@@ -62,6 +70,13 @@ class CurlRequest
         curl_close($ch);
         $this->url = $url;
         $this->setResponseCookie($this->content);
+
+        if ($this->curlInfo['http_code'] == 0 && isset($proxy)) {
+            Log::infoLog($proxy);
+            isset($this->ipError[$proxy]) ? $this->ipError[$proxy]++ : $this->ipError[$proxy] = 1;
+            $num = array_search($proxy, $this->ips);
+            unset($this->ips[$num]);
+        }
     }
 
     public function setResponseCookie($data)
@@ -119,5 +134,16 @@ class CurlRequest
         $this->referer = $referer;
     }
 
+    public function setProxy() {
+        $ips = Db::table('ips')->findAll("SELECT * FROM ips");
+
+        foreach ($ips as $key => $value) {
+            $this->ips[] = $value['ip'];
+        }
+    }
+
+    public function getProxy() {
+        return $this->ips[rand(0, count($this->ips))];
+    }
 
 }
