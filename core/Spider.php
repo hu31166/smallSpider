@@ -343,7 +343,8 @@ class Spider
             $elements = $xpath->query($value['xpath']);
             if (!is_null($elements)) {
                 foreach ($elements as $element) {
-                    $data[$value['name']] = $element->nodeValue;
+//                    $element->nodeValue
+                    $data[$value['name']] = $doc->saveXml($element);
                     if (isset($GLOBALS['config']['callback']['fields'])) {
                         $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']], $encode);
                     }

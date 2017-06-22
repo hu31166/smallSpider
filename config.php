@@ -1,5 +1,5 @@
 <?php
-define('DB_HOST', '192.168.66.1');
+define('DB_HOST', '127.0.0.1');
 define('DB_DATABASE', 'spider');
 define('DB_USERNAME', 'root');
 define('DB_PASSWORD', 'root');
