@@ -111,7 +111,8 @@ class Spider
             }
         }
         // 清除日志
-        @unlink($this->domain.'.log');
+        $log = str_replace('/', '', $this->domain);
+        @unlink($log.'.log');
         
     }
 
@@ -312,15 +313,18 @@ class Spider
      */
     public function getHtmlFields($content, $url)
     {
-
+        print_r($url);
         $url = str_replace($this->domain, '', $url);
         $match = '';
+
         foreach ($GLOBALS['config']['match_html'] as $key => $value) {
+
             if (preg_match('/\((.*)\)/', $value['url'], $pattern)) {
                 $result = preg_match("/$pattern[0]/", $url);
             } else {
                 $result = preg_match("/$value[url]/", $url);
             }
+
             if ($result) {
                 $table = isset($value['table']) ? $value['table'] : '';
                 if (isset($GLOBALS['config']['match_html'][$key]['match'])) {
@@ -329,7 +333,10 @@ class Spider
                 break;
             }
         }
+
+
         if (!$match) {
+
             return false;
         }
         libxml_use_internal_errors(true);
@@ -340,6 +347,7 @@ class Spider
         $data = [];
         foreach ($match as $key => $value) {
             $elements = $xpath->query($value['xpath']);
+
             if (!is_null($elements)) {
                 foreach ($elements as $element) {
                     $data[$value['name']] = $element->nodeValue;
@@ -351,6 +359,7 @@ class Spider
         }
         if (!empty($data)) {
             $data['url'] = $this->domain.$url;
+            $data['html'] = $content;
             if (isset($table)) {
                 Db::table($table)->insert($data);
             }
@@ -367,6 +376,7 @@ class Spider
     {
         foreach ($GLOBALS['config']['match_html'] as $key => $value) {
             preg_match_all("/$value[url]/", $content, $match);
+//            print_r(urldecode($match[0][0]));die;
             $match = array_filter($match);
             if ($match) {
                 $urls = $match[0];
