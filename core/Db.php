@@ -111,6 +111,22 @@ class Db
         return $stmt->rowCount();
     }
 
+    /**
+     * 删除数据
+     * @param $data
+     * @param string $where
+     * @return int
+     */
+    public function delete( $where = '') {
+        $edit_where = '';
+        $where && $edit_where = 'WHERE '.$where;
+        $sql = "DELETE FROM ".self::$table." $edit_where";
+        $stmt =  self::$db->prepare($sql);
+        $stmt->execute();
+        $this->error($stmt, $sql);
+        return $stmt->rowCount();
+    }
+
 
     public function find($sql) {
         $stmt = self::$db->prepare($sql);

@@ -10,9 +10,29 @@ foreach ($ips as $key => $value) {
     }
     \core\Db::table('ips')->insert(['ip' => $value]);
 }
+$ips = \core\Db::table('ips')->findAll("SELECT * FROM ips");
+foreach ($ips as $key => $value) {
+    if (checkip($value['ip']) === false) {
+        \core\Db::table('ips')->delete("ip = '$value[ip]'");
+    }
+}
 
-function checkip() {
-
+function checkip($proxy) {
+    $ch	= curl_init();
+    curl_setopt($ch,CURLOPT_URL, 'www.baidu.com');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+    curl_setopt($ch,CURLOPT_PROXY, $proxy);
+    curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    $result = curl_exec($ch);
+    $curlInfo = curl_getinfo($ch);
+    curl_close($ch);
+    if ($curlInfo['http_code'] == 0) {
+        return false;
+    } else {
+        return true;
+    }
 }
 die;
 
