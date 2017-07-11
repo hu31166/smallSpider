@@ -64,6 +64,14 @@ class Spider
 
     public $url = '';
 
+    public $showLog = '';
+
+    public $proxy = '';
+
+    public $matchHtml = [];
+
+    public $callback = [];
+
     /**
      * @var CurlRequest
      */
@@ -73,14 +81,18 @@ class Spider
     public function start()
     {
         $this->command();
-        $this->redisPrefix = $GLOBALS['config']['domain'].'-';
+        isset($GLOBALS['config']['domain']) && $this->redisPrefix = $GLOBALS['config']['domain'].'-';
         $this->beginTime = time();
-        $this->redis = $GLOBALS['config']['redis'];
-        $this->fork = $GLOBALS['config']['fork'];
-        $this->clear = $GLOBALS['config']['clear'];
-        $this->usleep = $GLOBALS['config']['usleep'];
-        $this->domain = $GLOBALS['config']['domain'];
-        $this->url = $GLOBALS['config']['url'];
+        isset($GLOBALS['config']['redis']) && $this->redis = $GLOBALS['config']['redis'];
+        isset($GLOBALS['config']['fork']) && $this->fork = $GLOBALS['config']['fork'];
+        isset($GLOBALS['config']['clear']) && $this->clear = $GLOBALS['config']['clear'];
+        isset($GLOBALS['config']['usleep']) && $this->usleep = $GLOBALS['config']['usleep'];
+        isset($GLOBALS['config']['domain']) && $this->domain = $GLOBALS['config']['domain'];
+        isset($GLOBALS['config']['url']) && $this->url = $GLOBALS['config']['url'];
+        isset($GLOBALS['config']['show_log']) && $this->showLog = $GLOBALS['config']['show_log'];
+        isset($GLOBALS['config']['proxy']) && $this->proxy = $GLOBALS['config']['proxy'];
+        isset($GLOBALS['config']['match_html']) && $this->matchHtml = $GLOBALS['config']['match_html'];
+        isset($GLOBALS['config']['callback']) && $this->callback = @$GLOBALS['config']['callback'];
         if ($this->redis == true) {
             Lredis::getInstance();
         }
@@ -101,7 +113,7 @@ class Spider
         $this->curl = $curl = new CurlRequest();
         $curl->setUserAgent();
         $curl->setReferer($this->url);
-        if (isset($GLOBALS['config']['proxy'])  && $GLOBALS['config']['proxy'] == true) {
+        if ($this->proxy == true) {
             $curl->setProxy();
         }
         $this->addUrlQueue($this->url);
@@ -122,8 +134,9 @@ class Spider
             }
         }
         // 清除日志
-        $log = str_replace('/', '', $this->domain);
-        @unlink($log.'.log');
+        if (file_exists(APP_PATH.'log'.DIRECTORY_SEPARATOR.Log::$file.'.log')) {
+            @unlink(APP_PATH.'log'.DIRECTORY_SEPARATOR.Log::$file.'.log');
+        }
 
     }
 
@@ -144,16 +157,9 @@ class Spider
      */
     public function command()
     {
-//        $argv = $GLOBALS['argv'];
-//        $file = isset($argv[1]) ? $argv[1] : '';
-//        if (!$file) {
-//            echo 'Please enter the file operation, such as # php run <filename>';
-//        }
-//        if (!file_exists(APP_PATH.'/spider/'.$file.'.php')) {
-//            echo 'File not found, please make sure the '.$file.'.php exists spider folder';
-//        }
-//        include_once APP_PATH.'/spider/'.$file.'.php';
-
+        $argv = $GLOBALS['argv'];
+        $file = isset($argv[1]) ? $argv[1] : '';
+        Log::$file = $file;
     }
 
     /**
@@ -314,7 +320,7 @@ class Spider
             
         }
         $str .= "\r\n";
-        if ($GLOBALS['config']['show_log'] == true) {
+        if ($this->showLog == true) {
             foreach (self::$infoLog as $key => $value) {
                 $str .= $value;
             }
@@ -334,7 +340,7 @@ class Spider
         $url = str_replace($this->domain, '', $url);
         $match = '';
 
-        foreach ($GLOBALS['config']['match_html'] as $key => $value) {
+        foreach ($this->matchHtml as $key => $value) {
 
             if (preg_match('/\((.*)\)/', $value['url'], $pattern)) {
                 $result = preg_match("/$pattern[0]/", $url);
@@ -344,8 +350,8 @@ class Spider
 
             if ($result) {
                 $table = isset($value['table']) ? $value['table'] : '';
-                if (isset($GLOBALS['config']['match_html'][$key]['match'])) {
-                    $match = $GLOBALS['config']['match_html'][$key]['match'];
+                if (isset($this->matchHtml[$key]['match'])) {
+                    $match = $this->matchHtml[$key]['match'];
                 }
                 break;
             }
@@ -373,8 +379,8 @@ class Spider
                 foreach ($elements as $element) {
 //                    $data[$value['name']] = $doc->saveXml($element);
                     $data[$value['name']] = $element->nodeValue;
-                    if (isset($GLOBALS['config']['callback']['fields'])) {
-                        $data[$value['name']] = $GLOBALS['config']['callback']['fields']($value['name'], $data[$value['name']], $encode);
+                    if (isset($this->callback['fields'])) {
+                        $data[$value['name']] = $this->callback['fields']($value['name'], $data[$value['name']], $encode);
                     }
                 }
             }
@@ -395,7 +401,7 @@ class Spider
      */
     public function getHtmlUrl($content)
     {
-        foreach ($GLOBALS['config']['match_html'] as $key => $value) {
+        foreach ($this->matchHtml as $key => $value) {
             preg_match_all("/$value[url]/", $content, $match);
 //            print_r(urldecode($match[0][0]));die;
             $match = array_filter($match);
@@ -453,7 +459,7 @@ class Spider
             $url = array_shift($this->queue);
             $this->queueUrl = $url;
         }
-        foreach ($GLOBALS['config']['match_html'] as $key => $value) {
+        foreach ($this->matchHtml as $key => $value) {
             if (preg_match("/$value[url]/", $url, $pattern)) {
                 $url = end($pattern);
                 $this->queueUrl = current($pattern);

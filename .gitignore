@@ -1,4 +1,4 @@
 .idea/
-/config.php
+/config/config.php
 *.log
 

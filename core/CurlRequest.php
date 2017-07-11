@@ -24,7 +24,7 @@ class CurlRequest
 
     public $content = '';
 
-    public $curlInfo = '';
+    public $curlInfo = [];
 
     public $url = '';
 
