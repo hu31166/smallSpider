@@ -144,15 +144,15 @@ class Spider
      */
     public function command()
     {
-        $argv = $GLOBALS['argv'];
-        $file = isset($argv[1]) ? $argv[1] : '';
-        if (!$file) {
-            echo 'Please enter the file operation, such as # php run <filename>';
-        }
-        if (!file_exists(APP_PATH.'/spider/'.$file.'.php')) {
-            echo 'File not found, please make sure the '.$file.'.php exists spider folder';
-        }
-        include_once APP_PATH.'/spider/'.$file.'.php';
+//        $argv = $GLOBALS['argv'];
+//        $file = isset($argv[1]) ? $argv[1] : '';
+//        if (!$file) {
+//            echo 'Please enter the file operation, such as # php run <filename>';
+//        }
+//        if (!file_exists(APP_PATH.'/spider/'.$file.'.php')) {
+//            echo 'File not found, please make sure the '.$file.'.php exists spider folder';
+//        }
+//        include_once APP_PATH.'/spider/'.$file.'.php';
 
     }
 
